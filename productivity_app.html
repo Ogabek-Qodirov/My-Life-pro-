@@ -1,0 +1,1399 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MyLife Pro — Notes · Budget · Tasks · Reports</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  :root {
+    --primary: #2D1B69;
+    --accent: #7C4DFF;
+    --accent2: #00BFA5;
+    --gold: #FFB300;
+    --danger: #FF5252;
+    --bg: #0F0A1E;
+    --bg2: #1A1035;
+    --bg3: #241848;
+    --card: rgba(255,255,255,0.05);
+    --border: rgba(255,255,255,0.1);
+    --text: #F0EEFF;
+    --muted: rgba(240,238,255,0.5);
+    --success: #00E676;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ---- SPLASH SCREEN ---- */
+  #splash {
+    position: fixed; inset:0; z-index:1000;
+    background: linear-gradient(135deg, #0F0A1E 0%, #1A0050 50%, #0F0A1E 100%);
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    gap: 32px;
+  }
+  .splash-logo {
+    text-align: center;
+  }
+  .splash-logo h1 {
+    font-family: 'Playfair Display', serif;
+    font-size: clamp(2.5rem, 6vw, 4.5rem);
+    font-weight: 900;
+    background: linear-gradient(135deg, #fff 0%, #A78BFA 50%, #7C4DFF 100%);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    letter-spacing: -2px;
+  }
+  .splash-logo p {
+    color: var(--muted);
+    font-size: 1rem;
+    margin-top: 8px;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    font-weight: 300;
+  }
+  .orbs {
+    position: absolute; inset:0; overflow:hidden; pointer-events:none;
+  }
+  .orb {
+    position: absolute; border-radius: 50%;
+    filter: blur(80px); opacity: 0.25;
+    animation: float 6s ease-in-out infinite;
+  }
+  .orb1 { width:400px;height:400px;background:#7C4DFF;top:-100px;left:-100px;animation-delay:0s; }
+  .orb2 { width:300px;height:300px;background:#00BFA5;bottom:-50px;right:-50px;animation-delay:2s; }
+  .orb3 { width:200px;height:200px;background:#FFB300;top:50%;left:50%;transform:translate(-50%,-50%);animation-delay:4s; }
+  @keyframes float {
+    0%,100%{transform:translateY(0) scale(1)}
+    50%{transform:translateY(-20px) scale(1.05)}
+  }
+  .start-btn {
+    background: linear-gradient(135deg, #7C4DFF, #00BFA5);
+    border: none; border-radius: 60px;
+    padding: 18px 60px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 1.1rem; font-weight: 600;
+    color: #fff; cursor: pointer;
+    box-shadow: 0 0 40px rgba(124,77,255,0.4);
+    transition: transform 0.2s, box-shadow 0.2s;
+    letter-spacing: 1px;
+  }
+  .start-btn:hover { transform: scale(1.05); box-shadow: 0 0 60px rgba(124,77,255,0.6); }
+  .emoji-float {
+    font-size: 3rem;
+    animation: floatEmoji 3s ease-in-out infinite;
+  }
+  @keyframes floatEmoji {0%,100%{transform:translateY(0)}50%{transform:translateY(-12px)}}
+
+  /* ---- MAIN APP ---- */
+  #app { display:none; }
+  .app-header {
+    background: rgba(15,10,30,0.9);
+    backdrop-filter: blur(20px);
+    border-bottom: 1px solid var(--border);
+    padding: 16px 24px;
+    display: flex; align-items: center; justify-content: space-between;
+    position: sticky; top:0; z-index:100;
+  }
+  .app-header h2 {
+    cursor: pointer;
+    font-family: 'Playfair Display', serif;
+    font-size: 1.4rem;
+    background: linear-gradient(135deg, #fff, #A78BFA);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  }
+  .header-date {
+    font-size: 0.8rem; color: var(--muted);
+  }
+
+  /* ---- MENU ---- */
+  #menu-screen {
+    min-height: calc(100vh - 65px);
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    padding: 40px 24px; gap: 24px;
+  }
+  .menu-title {
+    text-align: center; margin-bottom: 16px;
+  }
+  .menu-title h3 {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.8rem;
+    color: var(--text);
+  }
+  .menu-title p { color: var(--muted); font-size: 0.9rem; margin-top:6px; }
+  .menu-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+    width: 100%; max-width: 600px;
+  }
+  .menu-btn {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 28px 20px;
+    cursor: pointer;
+    text-align: center;
+    transition: all 0.3s;
+    display: flex; flex-direction: column;
+    align-items: center; gap: 12px;
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+  }
+  .menu-btn:hover {
+    background: rgba(124,77,255,0.15);
+    border-color: var(--accent);
+    transform: translateY(-4px);
+    box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+  }
+  .menu-btn .icon { font-size: 2.5rem; }
+  .menu-btn .label { font-size: 1rem; font-weight: 600; }
+  .menu-btn .sublabel { font-size: 0.75rem; color: var(--muted); }
+  .menu-btn.accent1 { border-color: rgba(124,77,255,0.3); }
+  .menu-btn.accent2 { border-color: rgba(0,191,165,0.3); }
+  .menu-btn.accent3 { border-color: rgba(255,179,0,0.3); }
+  .menu-btn.accent4 { border-color: rgba(255,82,82,0.3); }
+
+  /* ---- SCREENS ---- */
+  .screen {
+    display:none; padding: 24px;
+    max-width: 900px; margin: 0 auto;
+    animation: fadeIn 0.3s ease;
+  }
+  @keyframes fadeIn { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
+  .screen-header {
+    display: flex; align-items: center; gap: 16px;
+    margin-bottom: 28px;
+  }
+  .back-btn {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 12px; padding: 8px 16px;
+    cursor: pointer; color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.85rem; transition: all 0.2s;
+  }
+  .back-btn:hover { background: rgba(255,255,255,0.1); }
+  .screen-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.5rem;
+  }
+
+  /* ---- CARDS ---- */
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 20px;
+    margin-bottom: 16px;
+  }
+  .card-title {
+    font-size: 0.8rem; text-transform: uppercase;
+    letter-spacing: 2px; color: var(--muted);
+    margin-bottom: 12px;
+  }
+
+  /* ---- STATS ROW ---- */
+  .stats-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 12px; margin-bottom: 20px;
+  }
+  .stat-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 16px;
+    text-align: center;
+  }
+  .stat-label { font-size: 0.7rem; color: var(--muted); text-transform:uppercase; letter-spacing:1px; }
+  .stat-value { font-size: 1.4rem; font-weight: 600; margin-top: 6px; }
+  .stat-change { font-size: 0.75rem; margin-top: 4px; }
+  .up { color: var(--success); }
+  .down { color: var(--danger); }
+
+  /* ---- INPUTS ---- */
+  input[type=text], input[type=number], textarea, select {
+    background: rgba(255,255,255,0.07);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 10px 14px;
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.9rem;
+    width: 100%;
+    transition: border-color 0.2s;
+    outline: none;
+  }
+  input:focus, textarea:focus, select:focus {
+    border-color: var(--accent);
+  }
+  textarea { resize: vertical; min-height: 100px; }
+  select option { background: var(--bg2); }
+
+  /* ---- BUTTONS ---- */
+  .btn {
+    padding: 10px 22px;
+    border-radius: 10px;
+    border: none;
+    cursor: pointer;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.9rem;
+    font-weight: 500;
+    transition: all 0.2s;
+  }
+  .btn-primary {
+    background: linear-gradient(135deg, var(--accent), #9C6FFF);
+    color: #fff;
+    box-shadow: 0 4px 15px rgba(124,77,255,0.3);
+  }
+  .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(124,77,255,0.4); }
+  .btn-success {
+    background: linear-gradient(135deg, var(--accent2), #00E5CC);
+    color: #fff;
+  }
+  .btn-gold {
+    background: linear-gradient(135deg, #FF8F00, var(--gold));
+    color: #fff;
+  }
+  .btn-danger {
+    background: rgba(255,82,82,0.15);
+    color: var(--danger);
+    border: 1px solid rgba(255,82,82,0.3);
+  }
+  .btn-sm { padding: 6px 14px; font-size: 0.8rem; border-radius: 8px; }
+
+  /* ---- NOTE CARDS ---- */
+  .note-item {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px 16px;
+    margin-bottom: 10px;
+    display: flex; justify-content: space-between; align-items: flex-start;
+    transition: border-color 0.2s;
+  }
+  .note-item:hover { border-color: var(--accent); }
+  .note-text { font-size: 0.9rem; line-height: 1.5; flex:1; }
+  .note-meta { font-size: 0.75rem; color: var(--muted); margin-top: 4px; }
+  .note-actions { display:flex; gap:6px; flex-shrink:0; margin-left:12px; }
+
+  /* ---- TODO ---- */
+  .todo-item {
+    display: flex; align-items: center; gap: 12px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 12px 16px;
+    margin-bottom: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .todo-item:hover { border-color: var(--accent); }
+  .todo-check {
+    width: 22px; height: 22px; border-radius: 50%;
+    border: 2px solid var(--accent);
+    flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.2s;
+  }
+  .todo-item.done .todo-check {
+    background: var(--accent2);
+    border-color: var(--accent2);
+  }
+  .todo-item.done .todo-text { text-decoration: line-through; color: var(--muted); }
+  .todo-text { flex:1; font-size: 0.9rem; }
+  .todo-priority {
+    font-size: 0.7rem; padding: 2px 8px;
+    border-radius: 20px; font-weight: 500;
+  }
+  .p-high { background: rgba(255,82,82,0.2); color: #FF8A80; }
+  .p-mid  { background: rgba(255,179,0,0.2); color: #FFD54F; }
+  .p-low  { background: rgba(0,191,165,0.2); color: #80CBC4; }
+
+  /* ---- BUDGET/INCOME ---- */
+  .budget-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 16px;
+  }
+  .transaction {
+    display: flex; align-items: center;
+    justify-content: space-between;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .transaction:last-child { border-bottom: none; }
+  .tx-info { display:flex; flex-direction:column; }
+  .tx-label { font-size: 0.9rem; }
+  .tx-date { font-size: 0.75rem; color: var(--muted); }
+  .tx-amount { font-size: 1rem; font-weight: 600; }
+  .income-amt { color: var(--success); }
+  .expense-amt { color: var(--danger); }
+
+  /* ---- CALCULATOR ---- */
+  .calc-display {
+    background: rgba(0,0,0,0.3);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+    text-align: right;
+    margin-bottom: 16px;
+  }
+  .calc-expr { font-size: 0.85rem; color: var(--muted); min-height: 20px; }
+  .calc-val { font-size: 2.5rem; font-weight: 600; font-family: 'Playfair Display', serif; word-break: break-all; }
+  .calc-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+  }
+  .calc-key {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px 8px;
+    font-size: 1rem; font-weight: 500;
+    cursor: pointer;
+    text-align: center;
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    transition: all 0.15s;
+    user-select: none;
+  }
+  .calc-key:hover { background: rgba(124,77,255,0.2); border-color: var(--accent); }
+  .calc-key:active { transform: scale(0.95); }
+  .calc-key.op { color: var(--accent); }
+  .calc-key.eq { background: linear-gradient(135deg, var(--accent), #9C6FFF); color:#fff; border-color:transparent; }
+  .calc-key.clr { color: var(--danger); }
+  .calc-key.wide { grid-column: span 2; }
+  .calc-note { font-size: 0.75rem; color: var(--muted); margin-top: 6px; text-align: center; }
+
+  /* ---- PROGRESS BAR ---- */
+  .progress-wrap { background: rgba(255,255,255,0.1); border-radius: 20px; height: 8px; margin: 8px 0; }
+  .progress-bar { height:100%; border-radius:20px; transition: width 0.5s ease; }
+
+  /* ---- CHART MINI ---- */
+  .mini-chart {
+    display: flex; align-items: flex-end; gap: 6px;
+    height: 80px; margin-top: 8px;
+  }
+  .bar-col {
+    flex: 1; border-radius: 4px 4px 0 0;
+    transition: height 0.5s ease;
+    min-width: 0;
+    cursor: pointer;
+  }
+  .bar-col:hover { opacity: 0.8; }
+
+  /* ---- TAB NAV ---- */
+  .tabs {
+    display: flex; gap: 8px; margin-bottom: 20px;
+    flex-wrap: wrap;
+  }
+  .tab {
+    padding: 8px 18px;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    cursor: pointer;
+    font-size: 0.85rem;
+    color: var(--muted);
+    transition: all 0.2s;
+    background: var(--card);
+  }
+  .tab.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+  }
+
+  /* ---- TELEGRAM SECTION ---- */
+  .tg-setup {
+    background: linear-gradient(135deg, rgba(0,136,204,0.1), rgba(0,136,204,0.05));
+    border: 1px solid rgba(0,136,204,0.3);
+    border-radius: 16px;
+    padding: 20px;
+    margin-bottom: 16px;
+  }
+  .tg-header { display:flex; align-items:center; gap:12px; margin-bottom:16px; }
+  .tg-icon { font-size:2rem; }
+  .tg-header h3 { font-size:1rem; font-weight:600; }
+  .tg-header p { font-size:0.8rem; color:var(--muted); margin-top:2px; }
+  .tg-status { display:flex; align-items:center; gap:6px; font-size:0.8rem; }
+  .dot { width:8px;height:8px;border-radius:50%; }
+  .dot-green { background:var(--success); box-shadow:0 0 6px var(--success); }
+  .dot-yellow { background:var(--gold); box-shadow:0 0 6px var(--gold); }
+  .dot-red { background:var(--danger); }
+
+  /* ---- REPORT SECTION ---- */
+  .report-period {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    margin: 0 auto 20px;
+    max-width: 420px;
+    justify-items: center;
+  }
+
+  #report-preview {
+    max-width: 720px;
+    margin: 0 auto;
+  }
+
+  /* ---- FORM ROW ---- */
+  .form-row { display:flex; gap:10px; margin-bottom:12px; align-items:flex-end; flex-wrap:wrap; }
+  .form-group { flex:1; min-width: 120px; }
+  .form-label { font-size:0.75rem; color:var(--muted); margin-bottom:5px; display:block; }
+
+  /* ---- NOTIFICATION TOAST ---- */
+  #toast {
+    position: fixed; bottom:24px; right:24px;
+    background: var(--accent);
+    color: #fff;
+    padding: 12px 20px;
+    border-radius: 12px;
+    font-size: 0.9rem;
+    transform: translateY(100px);
+    transition: transform 0.3s;
+    z-index: 9999;
+    box-shadow: 0 10px 40px rgba(124,77,255,0.4);
+  }
+  #toast.show { transform: translateY(0); }
+
+  /* ---- MOTIVATIONAL BANNER ---- */
+  .motivational {
+    background: linear-gradient(135deg, rgba(124,77,255,0.2), rgba(0,191,165,0.1));
+    border: 1px solid rgba(124,77,255,0.3);
+    border-radius: 14px;
+    padding: 14px 18px;
+    font-size: 0.9rem;
+    font-style: italic;
+    text-align: center;
+    margin-bottom: 20px;
+    color: var(--muted);
+  }
+
+  /* ---- OVERVIEW SECTION ---- */
+  #daily-overview {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+    margin-bottom: 20px;
+  }
+  .overview-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 16px;
+  }
+  .ov-icon { font-size:1.5rem; margin-bottom:8px; }
+  .ov-title { font-size:0.75rem; text-transform:uppercase; letter-spacing:1px; color:var(--muted); }
+  .ov-value { font-size:1.3rem; font-weight:600; margin-top:4px; }
+  .ov-sub { font-size:0.75rem; color:var(--muted); margin-top:2px; }
+
+  /* INCREMENT SECTION */
+  .increment-row {
+    display:flex; align-items:center; justify-content:space-between;
+    padding:10px 0; border-bottom:1px solid var(--border);
+  }
+  .increment-row:last-child { border-bottom:none; }
+  .inc-label { font-size:0.85rem; }
+  .inc-change { font-size:0.9rem; font-weight:600; }
+
+  @media(max-width:500px) {
+    .menu-grid { grid-template-columns: 1fr 1fr; }
+    .budget-grid { grid-template-columns:1fr; }
+    .report-period { grid-template-columns:1fr; }
+    #daily-overview { grid-template-columns:1fr; }
+    .calc-key { padding:14px 6px; font-size:0.9rem; }
+  }
+</style>
+</head>
+<body>
+
+<!-- SPLASH -->
+<div id="splash">
+  <div class="orbs">
+    <div class="orb orb1"></div>
+    <div class="orb orb2"></div>
+    <div class="orb orb3"></div>
+  </div>
+  <div class="emoji-float">✨</div>
+  <div class="splash-logo">
+    <h1>MyLife Pro</h1>
+    <p>Your Smart Productivity </p>
+  </div>
+  <p style="color:var(--muted);font-size:0.85rem;text-align:center;max-width:280px;line-height:1.6;">
+    Notes · Budget · Tasks · Reports 
+  </p>
+  <button class="start-btn" onclick="startApp()">▶ START</button>
+</div>
+
+<!-- TOAST -->
+<div id="toast"></div>
+
+<!-- APP -->
+<div id="app">
+
+  <!-- HEADER -->
+  <div class="app-header">
+    <h2 onclick="showMenu()" title="Back to home">MyLife Pro</h2>
+    <div class="header-date" id="header-date"></div>
+  </div>
+
+  <!-- MENU -->
+  <div id="menu-screen">
+    <div class="motivational" id="daily-quote">💫 Loading your daily inspiration...</div>
+    <div class="menu-title">
+      <h3>What would you like to do?</h3>
+      <p>Choose a section to get started</p>
+    </div>
+    <div class="menu-grid">
+      <div class="menu-btn accent1" onclick="showScreen('notes-screen')">
+        <div class="icon">📝</div>
+        <div class="label">Notes</div>
+        <div class="sublabel">Daily notes & voice</div>
+      </div>
+      <div class="menu-btn accent2" onclick="showScreen('budget-screen')">
+        <div class="icon">💰</div>
+        <div class="label">Budget</div>
+        <div class="sublabel">Income & expenses</div>
+      </div>
+      <div class="menu-btn accent3" onclick="showScreen('calc-screen')">
+        <div class="icon">🧮</div>
+        <div class="label">Calculator</div>
+        <div class="sublabel">Smart calculations</div>
+      </div>
+      <div class="menu-btn accent4" onclick="showScreen('todo-screen')">
+        <div class="icon">✅</div>
+        <div class="label">To-Do List</div>
+        <div class="sublabel">Tasks & goals</div>
+      </div>
+      <div class="menu-btn" style="border-color:rgba(0,230,118,0.3)" onclick="showScreen('report-screen')">
+        <div class="icon">📊</div>
+        <div class="label">Reports</div>
+        <div class="sublabel">Daily/Weekly/Monthly</div>
+      </div>
+      <div class="menu-btn" style="border-color:rgba(0,136,204,0.3)" onclick="showScreen('telegram-screen')">
+        <div class="icon">🤖</div>
+        <div class="label">Telegram Bot</div>
+        <div class="sublabel">Setup & connect</div>
+      </div>
+    </div>
+    <!-- Mini Daily Overview -->
+    <div id="daily-overview">
+      <div class="overview-card">
+        <div class="ov-icon">📝</div>
+        <div class="ov-title">Notes Today</div>
+        <div class="ov-value" id="ov-notes">0</div>
+        <div class="ov-sub">entries</div>
+      </div>
+      <div class="overview-card">
+        <div class="ov-icon">✅</div>
+        <div class="ov-title">Tasks Done</div>
+        <div class="ov-value" id="ov-tasks">0/0</div>
+        <div class="ov-sub">completed</div>
+      </div>
+      <div class="overview-card">
+        <div class="ov-icon">💸</div>
+        <div class="ov-title">Daily Budget</div>
+        <div class="ov-value" id="ov-budget" style="font-size:1rem">0 so'm</div>
+        <div class="ov-sub">net balance</div>
+      </div>
+      <div class="overview-card">
+        <div class="ov-icon">📈</div>
+        <div class="ov-title">Monthly Income</div>
+        <div class="ov-value" id="ov-income" style="font-size:1rem">0 so'm</div>
+        <div class="ov-sub">this month</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- NOTES SCREEN -->
+  <div id="notes-screen" class="screen">
+    <div class="screen-header">
+      <button class="back-btn" onclick="showMenu()">← Back</button>
+      <div class="screen-title">📝 Notes</div>
+    </div>
+    <div class="card">
+      <div class="card-title">New Note</div>
+      <div class="form-row">
+        <div class="form-group" style="flex:2">
+          <textarea id="note-input" placeholder="Write your note here... (or use 🎤 voice)"></textarea>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Category</label>
+          <select id="note-cat">
+            <option value="general">📌 General</option>
+            <option value="work">💼 Work</option>
+            <option value="personal">🌟 Personal</option>
+            <option value="idea">💡 Idea</option>
+            <option value="reminder">🔔 Reminder</option>
+          </select>
+        </div>
+        <div class="form-group" style="flex:0;align-self:flex-end">
+          <button class="btn btn-primary" onclick="addNote()">+ Add Note</button>
+        </div>
+        <div class="form-group" style="flex:0;align-self:flex-end">
+          <button class="btn" id="voice-btn" onclick="startVoice()" style="background:var(--card);border:1px solid var(--border);color:var(--text)" title="Voice Input">🎤</button>
+        </div>
+      </div>
+    </div>
+    <div class="tabs">
+      <div class="tab active" onclick="filterNotes('all',this)">All</div>
+      <div class="tab" onclick="filterNotes('general',this)">📌 General</div>
+      <div class="tab" onclick="filterNotes('work',this)">💼 Work</div>
+      <div class="tab" onclick="filterNotes('personal',this)">🌟 Personal</div>
+      <div class="tab" onclick="filterNotes('idea',this)">💡 Ideas</div>
+    </div>
+    <div id="notes-list"></div>
+  </div>
+
+  <!-- BUDGET SCREEN -->
+  <div id="budget-screen" class="screen">
+    <div class="screen-header">
+      <button class="back-btn" onclick="showMenu()">← Back</button>
+      <div class="screen-title">💰 Budget Tracker</div>
+    </div>
+    <div class="stats-row">
+      <div class="stat-card">
+        <div class="stat-label">Daily Income</div>
+        <div class="stat-value up" id="daily-income-val">0</div>
+        <div class="stat-change">so'm today</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Daily Expense</div>
+        <div class="stat-value down" id="daily-expense-val">0</div>
+        <div class="stat-change">so'm today</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Monthly Income</div>
+        <div class="stat-value up" id="monthly-income-val">0</div>
+        <div class="stat-change">so'm this month</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Net Balance</div>
+        <div class="stat-value" id="net-balance-val">0</div>
+        <div class="stat-change">total so'm</div>
+      </div>
+    </div>
+    <!-- Daily Increment -->
+    <div class="card" style="margin-bottom:16px">
+      <div class="card-title">📈 Daily Increment</div>
+      <div id="increment-list">
+        <div style="color:var(--muted);font-size:0.85rem;text-align:center;padding:10px">No transactions yet. Add some!</div>
+      </div>
+    </div>
+    <div class="budget-grid">
+      <div class="card">
+        <div class="card-title">Add Income</div>
+        <div class="form-group" style="margin-bottom:8px">
+          <input type="text" id="inc-label" placeholder="Source (salary, freelance...)" />
+        </div>
+        <div class="form-group" style="margin-bottom:8px">
+          <input type="number" id="inc-amount" placeholder="Amount (so'm)" />
+        </div>
+        <button class="btn btn-success" style="width:100%" onclick="addTransaction('income')">+ Add Income</button>
+      </div>
+      <div class="card">
+        <div class="card-title">Add Expense</div>
+        <div class="form-group" style="margin-bottom:8px">
+          <input type="text" id="exp-label" placeholder="Expense (food, transport...)" />
+        </div>
+        <div class="form-group" style="margin-bottom:8px">
+          <input type="number" id="exp-amount" placeholder="Amount (so'm)" />
+        </div>
+        <button class="btn btn-danger btn-sm" style="width:100%;font-size:0.9rem;padding:10px" onclick="addTransaction('expense')">− Add Expense</button>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">Transaction History</div>
+      <div id="tx-list">
+        <div style="color:var(--muted);text-align:center;padding:20px;font-size:0.85rem">No transactions yet</div>
+      </div>
+    </div>
+    <div class="card" style="margin-top:8px">
+      <div class="card-title">Monthly Chart</div>
+      <div class="mini-chart" id="budget-chart"></div>
+      <div style="display:flex;gap:16px;margin-top:8px;font-size:0.75rem">
+        <span style="color:var(--success)">▬ Income</span>
+        <span style="color:var(--danger)">▬ Expense</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- CALCULATOR SCREEN -->
+  <div id="calc-screen" class="screen">
+    <div class="screen-header">
+      <button class="back-btn" onclick="showMenu()">← Back</button>
+      <div class="screen-title">🧮 Calculator</div>
+    </div>
+    <div class="calc-display">
+      <div class="calc-expr" id="calc-expr"></div>
+      <div class="calc-val" id="calc-val">0</div>
+    </div>
+    <div class="calc-grid">
+      <button class="calc-key clr" onclick="calcKey('C')">C</button>
+      <button class="calc-key op" onclick="calcKey('±')">±</button>
+      <button class="calc-key op" onclick="calcKey('%')">%</button>
+      <button class="calc-key op" onclick="calcKey('÷')">÷</button>
+
+      <button class="calc-key" onclick="calcKey('7')">7</button>
+      <button class="calc-key" onclick="calcKey('8')">8</button>
+      <button class="calc-key" onclick="calcKey('9')">9</button>
+      <button class="calc-key op" onclick="calcKey('×')">×</button>
+
+      <button class="calc-key" onclick="calcKey('4')">4</button>
+      <button class="calc-key" onclick="calcKey('5')">5</button>
+      <button class="calc-key" onclick="calcKey('6')">6</button>
+      <button class="calc-key op" onclick="calcKey('−')">−</button>
+
+      <button class="calc-key" onclick="calcKey('1')">1</button>
+      <button class="calc-key" onclick="calcKey('2')">2</button>
+      <button class="calc-key" onclick="calcKey('3')">3</button>
+      <button class="calc-key op" onclick="calcKey('+')">+</button>
+
+      <button class="calc-key wide" onclick="calcKey('0')">0</button>
+      <button class="calc-key" onclick="calcKey('.')">.</button>
+      <button class="calc-key eq" onclick="calcKey('=')">=</button>
+    </div>
+    <p class="calc-note">Results can be saved to Notes 📝</p>
+    <button class="btn btn-primary" style="width:100%;margin-top:12px" onclick="saveCalcToNote()">Save Result to Notes</button>
+  </div>
+
+  <!-- TODO SCREEN -->
+  <div id="todo-screen" class="screen">
+    <div class="screen-header">
+      <button class="back-btn" onclick="showMenu()">← Back</button>
+      <div class="screen-title">✅ To-Do List</div>
+    </div>
+    <div class="stats-row">
+      <div class="stat-card">
+        <div class="stat-label">Total Tasks</div>
+        <div class="stat-value" id="todo-total">0</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Completed</div>
+        <div class="stat-value up" id="todo-done">0</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Remaining</div>
+        <div class="stat-value down" id="todo-remain">0</div>
+      </div>
+    </div>
+    <div class="progress-wrap" style="margin-bottom:20px">
+      <div class="progress-bar" id="todo-progress" style="background:linear-gradient(90deg,var(--accent),var(--accent2));width:0%"></div>
+    </div>
+    <div class="card">
+      <div class="card-title">New Task</div>
+      <div class="form-row">
+        <div class="form-group" style="flex:2">
+          <input type="text" id="todo-input" placeholder="What do you need to do?" onkeydown="if(event.key==='Enter')addTodo()" />
+        </div>
+        <div class="form-group">
+          <select id="todo-priority">
+            <option value="high">🔴 High</option>
+            <option value="mid" selected>🟡 Medium</option>
+            <option value="low">🟢 Low</option>
+          </select>
+        </div>
+        <div class="form-group" style="flex:0;align-self:flex-end">
+          <button class="btn btn-primary" onclick="addTodo()">Add</button>
+        </div>
+      </div>
+    </div>
+    <div class="tabs">
+      <div class="tab active" onclick="filterTodos('all',this)">All</div>
+      <div class="tab" onclick="filterTodos('active',this)">Active</div>
+      <div class="tab" onclick="filterTodos('done',this)">Done</div>
+    </div>
+    <div id="todo-list"></div>
+  </div>
+
+  <!-- REPORT SCREEN -->
+  <div id="report-screen" class="screen">
+    <div class="screen-header">
+      <button class="back-btn" onclick="showMenu()">← Back</button>
+      <div class="screen-title">📊 Reports</div>
+    </div>
+    <div class="report-period">
+      <button class="btn btn-primary" onclick="generateReport('daily')">📅 Daily</button>
+      <button class="btn btn-gold" onclick="generateReport('weekly')">📅 Weekly</button>
+      <button class="btn btn-success" onclick="generateReport('monthly')">📅 Monthly</button>
+    </div>
+    <div id="report-preview" class="card">
+      <div style="text-align:center;padding:30px;color:var(--muted)">
+        <div style="font-size:3rem;margin-bottom:12px">📊</div>
+        <div>Select a report period above to preview and download as Excel</div>
+      </div>
+    </div>
+  </div>
+<script>
+// ===== DATA STORE =====
+let data = JSON.parse(localStorage.getItem('mylife_data') || JSON.stringify({
+  notes: [], todos: [], transactions: [], botToken: '', chatId: ''
+}));
+
+const save = () => localStorage.setItem('mylife_data', JSON.stringify(data));
+
+// ===== MOTIVATIONAL QUOTES =====
+const quotes = [
+  "💜 Every day is a new chance to grow. Start now!",
+  "🌟 Small steps lead to big achievements. Keep moving!",
+  "✨ You have the power to change your life today.",
+  "🔥 Discipline is choosing between what you want now and what you want most.",
+  "💪 Success is not given — it's earned daily!",
+  "🎯 Focus on progress, not perfection.",
+  "🌈 Your consistency today shapes your future tomorrow.",
+  "⭐ Be the energy you want to attract.",
+  "🦋 Transform your mindset, transform your life.",
+  "🚀 The best time to start was yesterday. The next best time is NOW!"
+];
+
+// ===== CALCULATOR STATE =====
+let calcState = { current:'0', prev:'', op:'', newNum:true, expr:'' };
+
+// ===== START APP =====
+function startApp() {
+  document.getElementById('splash').style.opacity = '0';
+  document.getElementById('splash').style.transition = 'opacity 0.5s';
+  setTimeout(() => {
+    document.getElementById('splash').style.display = 'none';
+    document.getElementById('app').style.display = 'block';
+    initApp();
+  }, 500);
+}
+
+function initApp() {
+  const now = new Date();
+  document.getElementById('header-date').textContent =
+    now.toLocaleDateString('en-GB', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
+  document.getElementById('daily-quote').textContent =
+    quotes[Math.floor(Math.random() * quotes.length)];
+  renderNotes();
+  renderTodos();
+  renderTransactions();
+  updateOverview();
+}
+
+// ===== NAVIGATION =====
+function showScreen(id) {
+  document.getElementById('menu-screen').style.display = 'none';
+  document.querySelectorAll('.screen').forEach(s => s.style.display = 'none');
+  document.getElementById(id).style.display = 'block';
+  if (id === 'budget-screen') updateBudgetStats();
+  if (id === 'todo-screen') updateTodoStats();
+  if (id === 'telegram-screen') loadBotConfig();
+}
+
+function showMenu() {
+  document.querySelectorAll('.screen').forEach(s => s.style.display = 'none');
+  document.getElementById('menu-screen').style.display = 'flex';
+  updateOverview();
+}
+
+// ===== OVERVIEW =====
+function updateOverview() {
+  const today = new Date().toDateString();
+  const todayNotes = data.notes.filter(n => new Date(n.date).toDateString() === today);
+  const done = data.todos.filter(t => t.done).length;
+  const total = data.todos.length;
+  const txToday = data.transactions.filter(t => new Date(t.date).toDateString() === today);
+  const dailyInc = txToday.filter(t => t.type === 'income').reduce((s,t) => s+t.amount, 0);
+  const dailyExp = txToday.filter(t => t.type === 'expense').reduce((s,t) => s+t.amount, 0);
+  const thisMonth = new Date().getMonth();
+  const monthInc = data.transactions.filter(t => t.type==='income' && new Date(t.date).getMonth()===thisMonth)
+    .reduce((s,t) => s+t.amount, 0);
+  document.getElementById('ov-notes').textContent = todayNotes.length;
+  document.getElementById('ov-tasks').textContent = done + '/' + total;
+  document.getElementById('ov-budget').textContent = fmtNum(dailyInc - dailyExp) + " so'm";
+  document.getElementById('ov-income').textContent = fmtNum(monthInc) + " so'm";
+}
+
+const fmtNum = n => Math.round(n).toLocaleString('uz-UZ');
+
+// ===== NOTES =====
+let notesFilter = 'all';
+
+function addNote() {
+  const txt = document.getElementById('note-input').value.trim();
+  const cat = document.getElementById('note-cat').value;
+  if (!txt) { showToast('⚠️ Please write a note!'); return; }
+  data.notes.unshift({ id: Date.now(), text: txt, cat, date: new Date().toISOString() });
+  save();
+  document.getElementById('note-input').value = '';
+  renderNotes();
+  updateOverview();
+  showToast('📝 Note saved!');
+}
+
+function filterNotes(filter, el) {
+  notesFilter = filter;
+  document.querySelectorAll('#notes-screen .tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  renderNotes();
+}
+
+function renderNotes() {
+  const catIcons = { general:'📌', work:'💼', personal:'🌟', idea:'💡', reminder:'🔔' };
+  const list = notesFilter === 'all' ? data.notes : data.notes.filter(n => n.cat === notesFilter);
+  const el = document.getElementById('notes-list');
+  if (!list.length) {
+    el.innerHTML = '<div style="color:var(--muted);text-align:center;padding:30px;font-size:0.85rem">No notes yet. Write your first note above!</div>';
+    return;
+  }
+  el.innerHTML = list.map(n => `
+    <div class="note-item">
+      <div style="flex:1">
+        <div class="note-text">${catIcons[n.cat]||'📌'} ${escHtml(n.text)}</div>
+        <div class="note-meta">${new Date(n.date).toLocaleString('en-GB')} · ${n.cat}</div>
+      </div>
+      <div class="note-actions">
+        <button class="btn btn-sm" style="background:var(--card);border:1px solid var(--border);color:var(--muted)" onclick="deleteNote(${n.id})">🗑</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function deleteNote(id) {
+  data.notes = data.notes.filter(n => n.id !== id);
+  save(); renderNotes(); updateOverview();
+}
+
+// ===== VOICE INPUT =====
+let recognition;
+function startVoice() {
+  if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+    showToast('🎤 Voice not supported in this browser. Try Chrome!'); return;
+  }
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  recognition = new SpeechRecognition();
+  recognition.lang = 'uz-UZ';
+  recognition.interimResults = false;
+  document.getElementById('voice-btn').textContent = '🔴';
+  recognition.onresult = (e) => {
+    document.getElementById('note-input').value = e.results[0][0].transcript;
+    document.getElementById('voice-btn').textContent = '🎤';
+    showToast('🎤 Voice captured!');
+  };
+  recognition.onerror = () => { document.getElementById('voice-btn').textContent = '🎤'; };
+  recognition.start();
+}
+
+// ===== BUDGET =====
+function addTransaction(type) {
+  const label = document.getElementById(type==='income'?'inc-label':'exp-label').value.trim();
+  const amount = parseFloat(document.getElementById(type==='income'?'inc-amount':'exp-amount').value);
+  if (!label || !amount || isNaN(amount)) { showToast('⚠️ Fill in all fields!'); return; }
+  data.transactions.unshift({ id: Date.now(), type, label, amount, date: new Date().toISOString() });
+  save();
+  document.getElementById(type==='income'?'inc-label':'exp-label').value = '';
+  document.getElementById(type==='income'?'inc-amount':'exp-amount').value = '';
+  renderTransactions();
+  updateBudgetStats();
+  updateOverview();
+  showToast(type === 'income' ? '💰 Income added!' : '💸 Expense recorded!');
+}
+
+function renderTransactions() {
+  const el = document.getElementById('tx-list');
+  if (!data.transactions.length) {
+    el.innerHTML = '<div style="color:var(--muted);text-align:center;padding:20px;font-size:0.85rem">No transactions yet</div>';
+    return;
+  }
+  el.innerHTML = data.transactions.slice(0, 15).map(t => `
+    <div class="transaction">
+      <div class="tx-info">
+        <div class="tx-label">${t.type==='income'?'💰':'💸'} ${escHtml(t.label)}</div>
+        <div class="tx-date">${new Date(t.date).toLocaleString('en-GB')}</div>
+      </div>
+      <div class="tx-amount ${t.type==='income'?'income-amt':'expense-amt'}">
+        ${t.type==='income'?'+':'−'}${fmtNum(t.amount)} so'm
+      </div>
+    </div>
+  `).join('');
+}
+
+function updateBudgetStats() {
+  const today = new Date().toDateString();
+  const thisMonth = new Date().getMonth();
+  const txToday = data.transactions.filter(t => new Date(t.date).toDateString() === today);
+  const dailyInc = txToday.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0);
+  const dailyExp = txToday.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);
+  const monthInc = data.transactions.filter(t=>t.type==='income'&&new Date(t.date).getMonth()===thisMonth).reduce((s,t)=>s+t.amount,0);
+  const totalInc = data.transactions.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0);
+  const totalExp = data.transactions.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);
+
+  document.getElementById('daily-income-val').textContent = fmtNum(dailyInc);
+  document.getElementById('daily-expense-val').textContent = fmtNum(dailyExp);
+  document.getElementById('monthly-income-val').textContent = fmtNum(monthInc);
+  const net = totalInc - totalExp;
+  const netEl = document.getElementById('net-balance-val');
+  netEl.textContent = fmtNum(net);
+  netEl.className = 'stat-value ' + (net >= 0 ? 'up' : 'down');
+
+  // Daily increment
+  const incEl = document.getElementById('increment-list');
+  if (!txToday.length) {
+    incEl.innerHTML = '<div style="color:var(--muted);font-size:0.85rem;text-align:center;padding:10px">No transactions today</div>';
+  } else {
+    incEl.innerHTML = txToday.map(t => `
+      <div class="increment-row">
+        <div class="inc-label">${t.type==='income'?'💰':'💸'} ${escHtml(t.label)}</div>
+        <div class="inc-change ${t.type==='income'?'up':'down'}">
+          ${t.type==='income'?'+':'−'}${fmtNum(t.amount)} so'm
+        </div>
+      </div>
+    `).join('');
+  }
+  renderMiniChart();
+}
+
+function renderMiniChart() {
+  const el = document.getElementById('budget-chart');
+  const days = [];
+  for (let i=6; i>=0; i--) {
+    const d = new Date(); d.setDate(d.getDate()-i);
+    const ds = d.toDateString();
+    const txD = data.transactions.filter(t => new Date(t.date).toDateString()===ds);
+    days.push({
+      inc: txD.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0),
+      exp: txD.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0),
+      label: d.toLocaleDateString('en-GB',{weekday:'short'})
+    });
+  }
+  const max = Math.max(...days.map(d=>Math.max(d.inc,d.exp)), 1);
+  el.innerHTML = days.map(d => `
+    <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px">
+      <div class="bar-col" style="height:${Math.max(4,d.inc/max*70)}px;background:var(--success);opacity:0.7"></div>
+      <div class="bar-col" style="height:${Math.max(4,d.exp/max*70)}px;background:var(--danger);opacity:0.7"></div>
+      <div style="font-size:0.6rem;color:var(--muted);margin-top:2px">${d.label}</div>
+    </div>
+  `).join('');
+}
+
+// ===== CALCULATOR =====
+function calcKey(k) {
+  const s = calcState;
+  if (k === 'C') {
+    s.current = '0'; s.prev = ''; s.op = ''; s.newNum = true; s.expr = '';
+  } else if (k === '±') {
+    s.current = String(-parseFloat(s.current));
+  } else if (k === '%') {
+    s.current = String(parseFloat(s.current) / 100);
+  } else if (['÷','×','−','+'].includes(k)) {
+    s.prev = s.current; s.op = k; s.newNum = true;
+    s.expr = s.current + ' ' + k;
+  } else if (k === '=') {
+    if (s.op && s.prev !== '') {
+      const a = parseFloat(s.prev), b = parseFloat(s.current);
+      const ops = {'÷':a/b,'×':a*b,'−':a-b,'+':a+b};
+      s.expr = s.prev + ' ' + s.op + ' ' + s.current + ' =';
+      s.current = String(Math.round(ops[s.op] * 1e10) / 1e10);
+      s.prev = ''; s.op = ''; s.newNum = true;
+    }
+  } else if (k === '.') {
+    if (s.newNum) { s.current = '0.'; s.newNum = false; }
+    else if (!s.current.includes('.')) s.current += '.';
+  } else {
+    if (s.newNum) { s.current = k; s.newNum = false; }
+    else s.current = s.current === '0' ? k : s.current + k;
+  }
+  document.getElementById('calc-val').textContent = s.current;
+  document.getElementById('calc-expr').textContent = s.expr;
+}
+
+function saveCalcToNote() {
+  const result = document.getElementById('calc-val').textContent;
+  const expr = document.getElementById('calc-expr').textContent;
+  if (result === '0' && !expr) { showToast('Nothing to save!'); return; }
+  data.notes.unshift({ id: Date.now(), text: '🧮 Calculation: ' + (expr||result) + ' = ' + result, cat: 'general', date: new Date().toISOString() });
+  save();
+  showToast('✅ Saved to Notes!');
+}
+
+// ===== TODO =====
+let todoFilter = 'all';
+
+function addTodo() {
+  const txt = document.getElementById('todo-input').value.trim();
+  const priority = document.getElementById('todo-priority').value;
+  if (!txt) { showToast('⚠️ Enter a task!'); return; }
+  data.todos.push({ id: Date.now(), text: txt, priority, done: false, date: new Date().toISOString() });
+  save();
+  document.getElementById('todo-input').value = '';
+  renderTodos();
+  updateTodoStats();
+  updateOverview();
+  showToast('✅ Task added!');
+}
+
+function toggleTodo(id) {
+  const t = data.todos.find(t => t.id === id);
+  if (t) { t.done = !t.done; save(); renderTodos(); updateTodoStats(); updateOverview(); }
+}
+
+function deleteTodo(id) {
+  data.todos = data.todos.filter(t => t.id !== id);
+  save(); renderTodos(); updateTodoStats(); updateOverview();
+}
+
+function filterTodos(f, el) {
+  todoFilter = f;
+  document.querySelectorAll('#todo-screen .tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  renderTodos();
+}
+
+function renderTodos() {
+  let list = data.todos;
+  if (todoFilter === 'active') list = list.filter(t => !t.done);
+  if (todoFilter === 'done') list = list.filter(t => t.done);
+  const el = document.getElementById('todo-list');
+  if (!list.length) {
+    el.innerHTML = '<div style="color:var(--muted);text-align:center;padding:30px;font-size:0.85rem">No tasks here!</div>';
+    return;
+  }
+  const pCls = { high:'p-high', mid:'p-mid', low:'p-low' };
+  const pLabel = { high:'🔴 High', mid:'🟡 Mid', low:'🟢 Low' };
+  el.innerHTML = list.map(t => `
+    <div class="todo-item ${t.done?'done':''}" onclick="toggleTodo(${t.id})">
+      <div class="todo-check">${t.done?'✓':''}</div>
+      <div class="todo-text">${escHtml(t.text)}</div>
+      <span class="todo-priority ${pCls[t.priority]}">${pLabel[t.priority]}</span>
+      <button class="btn btn-sm btn-danger" style="margin-left:8px" onclick="event.stopPropagation();deleteTodo(${t.id})">🗑</button>
+    </div>
+  `).join('');
+}
+
+function updateTodoStats() {
+  const total = data.todos.length;
+  const done = data.todos.filter(t => t.done).length;
+  document.getElementById('todo-total').textContent = total;
+  document.getElementById('todo-done').textContent = done;
+  document.getElementById('todo-remain').textContent = total - done;
+  document.getElementById('todo-progress').style.width = total ? (done/total*100)+'%' : '0%';
+}
+
+// ===== REPORTS =====
+function generateReport(period) {
+  const now = new Date();
+  let filtered = { transactions: [], notes: [], todos: [] };
+  let title = '';
+
+  if (period === 'daily') {
+    const today = now.toDateString();
+    filtered.transactions = data.transactions.filter(t => new Date(t.date).toDateString() === today);
+    filtered.notes = data.notes.filter(n => new Date(n.date).toDateString() === today);
+    filtered.todos = data.todos.filter(t => new Date(t.date).toDateString() === today);
+    title = 'Daily Report — ' + now.toLocaleDateString('en-GB');
+  } else if (period === 'weekly') {
+    const weekAgo = new Date(now - 7*24*60*60*1000);
+    filtered.transactions = data.transactions.filter(t => new Date(t.date) >= weekAgo);
+    filtered.notes = data.notes.filter(n => new Date(n.date) >= weekAgo);
+    filtered.todos = data.todos.filter(t => new Date(t.date) >= weekAgo);
+    title = 'Weekly Report — ' + weekAgo.toLocaleDateString('en-GB') + ' to ' + now.toLocaleDateString('en-GB');
+  } else {
+    const month = now.getMonth(), year = now.getFullYear();
+    filtered.transactions = data.transactions.filter(t => { const d=new Date(t.date); return d.getMonth()===month && d.getFullYear()===year; });
+    filtered.notes = data.notes.filter(n => { const d=new Date(n.date); return d.getMonth()===month && d.getFullYear()===year; });
+    filtered.todos = data.todos.filter(t => { const d=new Date(t.date); return d.getMonth()===month && d.getFullYear()===year; });
+    title = 'Monthly Report — ' + now.toLocaleDateString('en-GB', { month:'long', year:'numeric' });
+  }
+
+  const totalInc = filtered.transactions.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0);
+  const totalExp = filtered.transactions.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);
+
+  document.getElementById('report-preview').innerHTML = `
+    <div style="margin-bottom:16px">
+      <div style="font-size:1.1rem;font-weight:600;margin-bottom:12px">📊 ${title}</div>
+    </div>
+    <div class="stats-row">
+      <div class="stat-card">
+        <div class="stat-label">Total Income</div>
+        <div class="stat-value up">${fmtNum(totalInc)}</div>
+        <div class="stat-change">so'm</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Total Expense</div>
+        <div class="stat-value down">${fmtNum(totalExp)}</div>
+        <div class="stat-change">so'm</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Net Balance</div>
+        <div class="stat-value ${totalInc-totalExp>=0?'up':'down'}">${fmtNum(totalInc-totalExp)}</div>
+        <div class="stat-change">so'm</div>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin:12px 0">
+      <div style="text-align:center;padding:10px;background:var(--card);border-radius:10px">
+        <div style="font-size:1.5rem">📝</div>
+        <div style="font-size:0.7rem;color:var(--muted)">Notes</div>
+        <div style="font-size:1.2rem;font-weight:600">${filtered.notes.length}</div>
+      </div>
+      <div style="text-align:center;padding:10px;background:var(--card);border-radius:10px">
+        <div style="font-size:1.5rem">✅</div>
+        <div style="font-size:0.7rem;color:var(--muted)">Tasks</div>
+        <div style="font-size:1.2rem;font-weight:600">${filtered.todos.length}</div>
+      </div>
+      <div style="text-align:center;padding:10px;background:var(--card);border-radius:10px">
+        <div style="font-size:1.5rem">💸</div>
+        <div style="font-size:0.7rem;color:var(--muted)">Transactions</div>
+        <div style="font-size:1.2rem;font-weight:600">${filtered.transactions.length}</div>
+      </div>
+    </div>
+    <button class="btn btn-gold" style="width:100%;margin-top:8px" onclick="downloadExcel('${period}')">⬇️ Download Excel Report</button>
+  `;
+}
+
+function downloadExcel(period) {
+  const now = new Date();
+  const wb = XLSX.utils.book_new();
+
+  // Summary sheet
+  const totalInc = data.transactions.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0);
+  const totalExp = data.transactions.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);
+  const summaryData = [
+    ['MyLife Pro — ' + period.toUpperCase() + ' REPORT'],
+    ['Generated:', now.toLocaleString('en-GB')],
+    [],
+    ['SUMMARY', '', ''],
+    ['Total Income', totalInc, "so'm"],
+    ['Total Expense', totalExp, "so'm"],
+    ['Net Balance', totalInc-totalExp, "so'm"],
+    ['Total Notes', data.notes.length, ''],
+    ['Total Tasks', data.todos.length, ''],
+    ['Tasks Done', data.todos.filter(t=>t.done).length, ''],
+  ];
+  const ws1 = XLSX.utils.aoa_to_sheet(summaryData);
+  XLSX.utils.book_append_sheet(wb, ws1, 'Summary');
+
+  // Transactions sheet
+  const txData = [['Date', 'Type', 'Label', "Amount (so'm)"]];
+  data.transactions.forEach(t => txData.push([
+    new Date(t.date).toLocaleString('en-GB'), t.type, t.label, t.amount
+  ]));
+  const ws2 = XLSX.utils.aoa_to_sheet(txData);
+  XLSX.utils.book_append_sheet(wb, ws2, 'Transactions');
+
+  // Notes sheet
+  const notesData = [['Date', 'Category', 'Note']];
+  data.notes.forEach(n => notesData.push([new Date(n.date).toLocaleString('en-GB'), n.cat, n.text]));
+  const ws3 = XLSX.utils.aoa_to_sheet(notesData);
+  XLSX.utils.book_append_sheet(wb, ws3, 'Notes');
+
+  // Tasks sheet
+  const todoData = [['Date', 'Task', 'Priority', 'Status']];
+  data.todos.forEach(t => todoData.push([
+    new Date(t.date).toLocaleString('en-GB'), t.text, t.priority, t.done?'Done':'Pending'
+  ]));
+  const ws4 = XLSX.utils.aoa_to_sheet(todoData);
+  XLSX.utils.book_append_sheet(wb, ws4, 'Tasks');
+
+  XLSX.writeFile(wb, 'MyLifePro_' + period + '_' + now.toLocaleDateString('en-GB').replace(/\//g,'-') + '.xlsx');
+  showToast('📊 Excel report downloaded!');
+}
+
+// ===== TELEGRAM =====
+function loadBotConfig() {
+  document.getElementById('bot-token').value = data.botToken || '';
+  document.getElementById('chat-id').value = data.chatId || '';
+  updateBotStatus();
+}
+
+function saveBot() {
+  data.botToken = document.getElementById('bot-token').value.trim();
+  data.chatId = document.getElementById('chat-id').value.trim();
+  save();
+  updateBotStatus();
+  showToast('💾 Bot config saved!');
+}
+
+function updateBotStatus() {
+  const el = document.getElementById('bot-status');
+  if (data.botToken && data.chatId) {
+    el.innerHTML = '<div class="dot dot-green"></div><span style="color:var(--success)">Connected — Ready to send!</span>';
+  } else {
+    el.innerHTML = '<div class="dot dot-yellow"></div><span>Not configured yet</span>';
+  }
+}
+
+async function testBot() {
+  if (!data.botToken || !data.chatId) {
+    showToast('⚠️ Save your bot token & chat ID first!'); return;
+  }
+  const q = quotes[Math.floor(Math.random() * quotes.length)];
+  const msg = '🌟 *MyLife Pro Bot*\n\n' + q + '\n\n✨ Your productivity assistant is connected!';
+  await sendTelegram(msg);
+}
+
+async function sendDailyReport() {
+  if (!data.botToken || !data.chatId) {
+    showToast('⚠️ Configure bot first!'); return;
+  }
+  const now = new Date();
+  const today = now.toDateString();
+  const txToday = data.transactions.filter(t => new Date(t.date).toDateString()===today);
+  const inc = txToday.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0);
+  const exp = txToday.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);
+  const todayNotes = data.notes.filter(n => new Date(n.date).toDateString()===today);
+  const msg = `📊 *Daily Report — ${now.toLocaleDateString('en-GB')}*\n\n📝 Notes: ${todayNotes.length}\n✅ Tasks: ${data.todos.filter(t=>t.done).length}/${data.todos.length}\n💰 Income: ${fmtNum(inc)} so'm\n💸 Expense: ${fmtNum(exp)} so'm\n📈 Net: ${fmtNum(inc-exp)} so'm\n\n${quotes[Math.floor(Math.random()*quotes.length)]}`;
+  await sendTelegram(msg);
+}
+
+async function sendTelegram(text) {
+  try {
+    const r = await fetch(`https://api.telegram.org/bot${data.botToken}/sendMessage`, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ chat_id: data.chatId, text, parse_mode: 'Markdown' })
+    });
+    const d = await r.json();
+    if (d.ok) showToast('✅ Sent to Telegram!');
+    else showToast('❌ Error: ' + (d.description || 'Check token & chat ID'));
+  } catch(e) {
+    showToast('❌ Network error. Check your token!');
+  }
+}
+
+function copyBotCode() {
+  const code = document.querySelector('.card pre, .card div[style*="monospace"]');
+  if (code) {
+    navigator.clipboard.writeText(code.textContent).then(() => showToast('📋 Bot code copied!'));
+  }
+}
+
+// ===== TOAST =====
+let toastTimer;
+function showToast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 3000);
+}
+
+// ===== UTILS =====
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// Auto-update date
+setInterval(() => {
+  if (document.getElementById('header-date')) {
+    const now = new Date();
+    document.getElementById('header-date').textContent =
+      now.toLocaleDateString('en-GB', { weekday:'short', day:'numeric', month:'short', year:'numeric' });
+  }
+}, 60000);
+</script>
+</body>
+</html>
